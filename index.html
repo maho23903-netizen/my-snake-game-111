@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>لعبة الأفعى المتطورة - المبرمج ابو عبدو محو</title>
+    <style>
+        body {
+            background-color: #1a0933;
+            color: #fff;
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 0;
+            padding: 10px;
+            user-select: none;
+            touch-action: none;
+        }
+        h1 {
+            color: #d1b3ff;
+            margin: 5px 0;
+            font-size: 22px;
+        }
+        #scoreboard {
+            font-size: 15px;
+            margin-bottom: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 6px;
+            border-radius: 8px;
+            display: inline-block;
+        }
+        #scoreboard span {
+            margin: 0 8px;
+        }
+        #control-selector {
+            margin: 5px 0 10px 0;
+            padding: 6px;
+            background: #4a154b;
+            color: white;
+            border: 2px solid #d1b3ff;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        #game-canvas {
+            border: 4px solid #4a154b;
+            box-shadow: 0 0 15px rgba(0,0,0,0.5);
+            max-width: 95%;
+            height: auto;
+            display: block;
+            margin: 0 auto;
+        }
+        #controls-container {
+            margin-top: 10px;
+            height: 130px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        #button-controls {
+            display: grid;
+            grid-template-columns: repeat(3, 50px);
+            grid-gap: 6px;
+        }
+        .btn {
+            width: 50px;
+            height: 50px;
+            background: #4a154b;
+            border: 2px solid #d1b3ff;
+            color: white;
+            font-size: 18px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        #btn-up { grid-column: 2; }
+        #btn-left { grid-column: 1; }
+        #btn-right { grid-column: 3; }
+        #btn-down { grid-column: 2; }
+
+        #steering-wheel {
+            width: 110px;
+            height: 110px;
+            border: 6px solid #d1b3ff;
+            border-radius: 50%;
+            background: #4a154b;
+            position: relative;
+            display: none;
+        }
+        #steering-wheel::before {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 4px;
+            top: 50%;
+            left: 0;
+            background: #d1b3ff;
+            transform: translateY(-50%);
+        }
+        #steering-wheel::after {
+            content: '';
+            position: absolute;
+            width: 4px;
+            height: 50%;
+            bottom: 0;
+            left: 50%;
+            background: #d1b3ff;
+            transform: translateX(-50%);
+        }
+        #wheel-center {
+            width: 20px;
+            height: 20px;
+            background: #ffda79;
+            border-radius: 50%;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+    </style>
+</head>
+<body>
+
+    <h1>👑 المبرمج ابو عبدو محو 👑</h1>
+    
+    <div id="scoreboard">
+        <span>النقاط: <b id="score">0</b></span> | 
+        <span>المرحلة: <b id="level">1</b></span> | 
+        <span>المتبقي: <b id="apples-left">0</b></span>
+    </div>
+
+    <br>
+    <select id="control-selector" onchange="switchControls(this.value)">
+        <option value="buttons">🕹️ أزرار الأسهم</option>
+        <option value="wheel">🛞 الدركسيون (طارة سيارة)</option>
+    </select>
+
+    <canvas id="game-canvas" width="400" height="400"></canvas>
+
+    <div id="controls-container">
+        <div id="button-controls">
+            <div class="btn" id="btn-up">▲</div>
+            <div class="btn" id="btn-left">◀</div>
+            <div class="btn" id="btn-right">▶</div>
+            <div class="btn" id="btn-down">▼</div>
+        </div>
+
+        <div id="steering-wheel">
+            <div id="wheel-center"></div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById("game-canvas");
+        const ctx = canvas.getContext("2d");
+
+        const cellSize = 20;
+        const gridCount = 20;
+        
+        let snake = [{x: 10, y: 10}, {x: 10, y: 11}, {x: 10, y: 12}];
+        let apple = {x: 5, y: 5};
+        let dx = 0;
+        let dy = -1; 
+        
+        let score = 0;
+        let currentLevel = 1;
+        let applesEatenInLevel = 0;
+        let applesNeededForLevel = Math.floor(Math.random() * 4) + 2;
+        
+        let speed = 160;
+        let gameInterval = setInterval(gameLoop, speed);
+
+        function gameLoop() {
+            // تحريك الدودة
+            const head = {x: snake[0].x + dx, y: snake[0].y + dy};
+            snake.unshift(head);
+            
+            // تحقق إذا أكلت التفاحة
+            if (head.x === apple.x && head.y === apple.y) {
+                score++;
+                applesEatenInLevel++;
+                
+                // ميزة زيادة السرعة كل 6 نقاط
+                if (score % 6 === 0) {
+                    speed = Math.max(60, speed - 15);
+                    clearInterval(gameInterval);
+                    gameInterval = setInterval(gameLoop, speed);
+                }
+
+                // نظام المراحل العشوائي
+                if (applesEatenInLevel >= applesNeededForLevel) {
+                    currentLevel++;
+                    applesEatenInLevel = 0;
+                    applesNeededForLevel = Math.floor(Math.random() * 4) + 2;
+                    alert(`كفو أبو عبدو! وصلت للمرحلة ${currentLevel} 🎉 المطلوب الآن: ${applesNeededForLevel} تفاحات`);
+                }
+                
+                generateApple();
+            } else {
+                snake.pop();
+            }
+
+            // تحقق من الخسارة (الاصطدام بالجدران أو الجسم)
+            if (head.x < 0 || head.x >= gridCount || head.y < 0 || head.y >= gridCount || hitSelf()) {
+                alert("حاول مرة أخرى يا بطل!");
+                resetGame();
+                return;
+            }
+
+            drawGame();
+        }
+
+        function hitSelf() {
+            for (let i = 1; i < snake.length; i++) {
+                if (snake[i].x === snake[0].x && snake[i].y === snake[0].y) return true;
+            }
+            return false;
+        }
+
+        function generateApple() {
+            apple.x = Math.floor(Math.random() * gridCount);
+            apple.y = Math.floor(Math.random() * gridCount);
+        }
+
+        function resetGame() {
+            snake = [{x: 10, y: 10}, {x: 10, y: 11}, {x: 10, y: 12}];
+            dx = 0; dy = -1; score = 0; currentLevel = 1; applesEatenInLevel = 0;
+            applesNeededForLevel = Math.floor(Math.random() * 4) + 2;
+            speed = 160;
+            clearInterval(gameInterval);
+            gameInterval = setInterval(gameLoop, speed);
+        }
+
+        function drawGame() {
+            // رسم الشطرنج البنفسجي
+            for (let r = 0; r < gridCount; r++) {
+                for (let c = 0; c < gridCount; c++) {
+                    ctx.fillStyle = (r + c) % 2 === 0 ? "#2c1654" : "#220f44";
+                    ctx.fillRect(c * cellSize, r * cellSize, cellSize, cellSize);
+                }
+            }
+
+            // رسم التفاحة 🍎
+            ctx.font = "18px Arial";
+            ctx.textBaseline = "top";
+            ctx.fillText("🍎", apple.x * cellSize, apple.y * cellSize);
+
+            // رسم الدودة بالعيون
+            snake.forEach((part, index) => {
+                ctx.fillStyle = index === 0 ? "#1e5e20" : "#4caf50";
+                ctx.beginPath();
+                let cX = part.x * cellSize + cellSize / 2;
+                let cY = part.y * cellSize + cellSize / 2;
+                ctx.arc(cX, cY, cellSize / 2 - 1, 0, 2 * Math.PI);
+                ctx.fill();
+
+                if (index === 0) {
+                    ctx.fillStyle = "#fff";
+                    ctx.beginPath();
+                    ctx.arc(cX - 3, cY - 3, 2, 0, 2 * Math.PI);
+                    ctx.arc(cX + 3, cY - 3, 2, 0, 2 * Math.PI);
+                    ctx.fill();
+                }
+            });
+
+            // تحديث لوحة النقاط
+            document.getElementById("score").innerText = score;
+            document.getElementById("level").innerText = currentLevel;
+            document.getElementById("apples-left").innerText = Math.max(0, applesNeededForLevel - applesEatenInLevel);
+        }
+
+        function switchControls(type) {
+            document.getElementById("button-controls").style.display = type === "buttons" ? "grid" : "none";
+            document.getElementById("steering-wheel").style.style.display = type === "wheel" ? "block" : "none";
+        }
+
+        // أزرار الموبايل
+        document.getElementById("btn-up").addEventListener("touchstart", (e) => { e.preventDefault(); if(dy===0){dx=0; dy=-1;} });
+        document.getElementById("btn-down").addEventListener("touchstart", (e) => { e.preventDefault(); if(dy===0){dx=0; dy=1;} });
+        document.getElementById("btn-left").addEventListener("touchstart", (e) => { e.preventDefault(); if(dx===0){dx=-1; dy=0;} });
+        document.getElementById("btn-right").addEventListener("touchstart", (e) => { e.preventDefault(); if(dx===0){dx=1; dy=0;} });
+
+        // الكمبيوتر
+        window.addEventListener("keydown", e => {
+            if (e.key === "ArrowUp" && dy === 0) { dx = 0; dy = -1; }
+            if (e.key === "ArrowDown" && dy === 0) { dx = 0; dy = 1; }
+            if (e.key === "ArrowLeft" && dx === 0) { dx = -1; dy = 0; }
+            if (e.key === "ArrowRight" && dx === 0) { dx = 1; dy = 0; }
+        });
+
+        // منطق الدركسيون المبسط جداً بدون تعقيد إحداثيات
+        const wheel = document.getElementById("steering-wheel");
